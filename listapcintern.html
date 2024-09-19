@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Country Search App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url(https://i.ibb.co/Tqv6zFz/IMG-20240919-142317.jpg);
+            margin: 0;
+            padding: 20px;
+        }
+
+        input {
+            padding: 10px;
+            width: 280px;
+            margin-bottom: 20px;
+        }
+
+        .suggestions {
+            border: 1px solid #ccc;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            width: 300px;
+            position: absolute;
+            z-index: 2;
+        }
+
+        .suggestions::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        .suggestions::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border: 1px solid #888;
+
+        }
+
+        .suggestions::-webkit-scrollbar-thumb {
+            background: #888;
+        }
+
+        .suggestions::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .suggestion-item {
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        .suggestion-item:hover {
+            background: #f0f0f0;
+        }
+
+        .popup {
+            display: none;
+            position: fixed;
+            width: 85%;
+            max-height: 70%;
+            overflow-y: auto;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 20px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 4;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 3;
+        }
+
+        .blur {
+            filter: blur(5px);
+        }
+
+        .country-list1 {
+            color: green;
+            -webkit-text-stroke: 0.1px black;
+        }
+
+        .country-list2 {
+            color: rgb(255, 140, 0);
+            -webkit-text-stroke: 0.1px black;
+        }
+
+        .country-list3 {
+            color: red;
+            -webkit-text-stroke: 0.1px black;
+        }
+
+        .watermark {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 40px;
+            height: 40px;
+        }
+
+        .footer {
+            font-size: 0.6em;
+            color: #888;
+            text-align: left;
+            margin-top: 15px;
+        }
+
+        .glob {
+            width: 100%;
+            height: auto;
+            margin-top: 15%;
+            z-index: 1;
+        }
+
+        .filter-container {
+            display: flex;
+            text-align: left;
+            margin-left: -120px;
+            margin-bottom: 20px;
+        }
+
+        .filter-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 5;
+        }
+
+        .columns {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .column {
+            flex: 1;
+            min-width: 150px;
+            padding: 0px;
+            box-sizing: border-box;
+            font-size: 15px;
+        }
+
+        .filter-checkboxes {
+            margin-bottom: 10px;
+            margin-right: 0px;
+            margin-top: 10px;
+            -webkit-text-stroke: 0.1px black;
+        }
+
+        .btn {
+            margin-left: 120px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .filter-checkboxes:not(.exclude) input[type="checkbox"] {
+            margin-right: -100px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="content">
+        <input type="text" id="search" placeholder="Search for a country...">
+        <div id="suggestions" class="suggestions"></div>
+
+        <div id="filter-container" class="filter-container">
+            <div class="filter-checkboxes">
+                <label style="color: green;"><input type="checkbox" id="filter1">Nu este nevoie de P.C.
+                    internațional</label><br>
+                <label style="color: rgb(255, 140, 0);"><input type="checkbox" id="filter2">Este nevoie de P.C.
+                    internațional</label><br>
+                <label style="color: red;"><input type="checkbox" id="filter3">Fără drept de a conduce în
+                    România</label>
+
+            </div>
+            <button class="btn" id="show-lists">Afișează</button>
+        </div>
+    </div>
+
+    <img class="glob" src="https://i.ibb.co/ncKNYcJ/20240630-140906.png" alt="20230909-141647" border="0">
+    <img class="watermark" src="https://i.ibb.co/q9v4wW9/20230913-133046.png" alt="20230913-133046" border="0">
+    <div id="overlay" class="overlay"></div>
+    <div id="popup" class="popup">
+        <div id="popup-content"></div>
+        <div class="footer">Actualizat la data de: 28.06.2024</div>
+    </div>
+
+    <button id="filter-button" class="filter-button">Filtru</button>
+
+    <script>
+        const list1 = ["🇦🇱 Albania", "🇿🇦 Africa de Sud", "🇨🇫 Africa Centrală", "🇦🇩 Andorra", "🇸🇦 Arabia Saudită", "🇦🇲 Armenia", "🇦🇹 Austria", "🇦🇿 Azerbaidjan", "🇧🇸 Bahamas", "🇧🇭 Bahrain", "🇧🇾 Belarus", "🇧🇪 Belgia", "🇧🇯 Benin", "🇧🇦 Bosnia și Herțegovina", "🇧🇷 Brazilia", "🇧🇬 Bulgaria", "🇨🇻 Capul Verde", "🇨🇿 Cehia", "🇨🇾 Cipru", "🇨🇮 Coasta de Fildeș", "🇭🇷 Croația", "🇨🇺 Cuba", "🇨🇩 R.D.Congo", "🇩🇰 Danemarca", "🇪🇬 Egipt", "🇨🇭 Elveția", "🇦🇪 Emiratele Arabe Unite", "🇪🇪 Estonia", "🇪🇹 Etiopia", "🇵🇭 Filipine", "🇫🇮 Finlanda", "🇫🇷 Franța", "🇬🇪 Georgia", "🇩🇪 Germania", "🇬🇮 Gibraltar", "🇬🇷 Grecia", "🇬🇬 Guernsey(UK)", "🇬🇾 Guyana", "🇭🇳 Honduras", "🇮🇶 Irak", "🇮🇷 Iran", "🇮🇪 Irlanda", "🇮🇸 Islanda", "🇮🇱 Israel", "🇮🇹 Italia", "🇯🇪 Jersey(UK)", "🇰🇿 Kazahstan", "🇰🇪 Kenya", "🇰🇼 Kuweit", "🇰🇬 Kârgâzstan", "🇱🇻 Letonia", "🇱🇷 Liberia", "🇱🇮 Liechtenstein", "🇱🇹 Lituania", "🇱🇺 Luxemburg", "🇲🇰 Macedonia de Nord", "🇲🇻 Maldive", "🇲🇹 Malta", "🇬🇧 Marea Britanie (UK)", "🇲🇦 Maroc", "🇲🇩 Moldova", "🇲🇨 Monaco", "🇲🇳 Mongolia", "🇲🇪 Muntenegru", "🇲🇲 Myanmar", "🇳🇪 Niger", "🇳🇬 Nigeria", "🇳🇴 Norvegia", "🇳🇱 Olanda", "🇴🇲 Oman", "🇵🇰 Pakistan", "🇵🇸 Palestina", "🇵🇪 Peru", "🇵🇱 Polonia", "🇵🇹 Portugalia", "🇶🇦 Qatar", "🇷🇴 România", "🇷🇺 Rusia", "🇸🇲 San Marino", "🇸🇳 Senegal", "🇷🇸 Serbia", "🇸🇨 Seychelles", "🇸🇰 Slovacia", "🇸🇮 Slovenia", "🇪🇸 Spania", "🇸🇪 Suedia", "🇹🇯 Tadjikistan", "🇹🇭 Thailanda", "🇹🇳 Tunisia", "🇹🇷 Turcia", "🇹🇲 Turkmenistan", "🇺🇦 Ucraina", "🇺🇬 Uganda", "🇭🇺 Ungaria", "🇺🇾 Uruguay", "🇺🇿 Uzbekistan", "🇻🇦 Vatican", "🇻🇳 Vietnam", "🇿🇼 Zimbabwe"];
+        const list2 = ["🇩🇿 Algeria", "🇦🇷 Argentina", "🇦🇺 Australia", "🇧🇧 Barbados", "🇧🇩 Bangladesh", "🇧🇿 Belize", "🇧🇼 Botswana", "🇧🇳 Brunei", "🇧🇫 Burkina Faso", "🇧🇮 Burundi", "🇰🇭 Cambodgia", "🇨🇦 Canada", "🇨🇱 Chile", "🇰🇷 Coreea de Sud", "🇩🇲 Dominica", "🇩🇴 Republica Dominicană", "🇪🇨 Ecuador", "🇫🇯 Fiji", "🇬🇭 Ghana", "🇬🇹 Guatemala", "🇭🇹 Haiti", "🇮🇳 India", "🇮🇲 Insula Man(UK)", "🇯🇲 Jamaica", "🇯🇵 Japonia", "🇯🇴 Iordania", "🇰🇮 Kiribati", "🇱🇦 Laos", "🇱🇧 Liban", "🇱🇸 Lesotho", "🇲🇬 Madagascar", "🇲🇼 Malawi", "🇲🇾 Malaezia", "🇲🇱 Mali", "🇲🇭 Insulele Marshall", "🇫🇲 Micronezia", "🇳🇦 Namibia", "🇳🇿 Noua Zeelandă", "🇵🇬 Papua Noua Guinee", "🇵🇾 Paraguay", "🇷🇼 Rwanda", "🇸🇬 Singapore", "🇸🇱 Sierra Leone", "🇱🇰 Sri Lanka", "🇸🇾 Siria", "🇺🇸 Statele Unite ale Americii", "🇹🇬 Togo", "🇹🇴 Tonga", "🇹🇹 Trinidad și Tobago"];
+        const list3 = ["🇦🇫 Afganistan", "🇦🇴 Angola", "🇦🇬 Antigua și Barbuda", "🇧🇹 Bhutan", "🇧🇴 Bolivia", "🇨🇲 Camerun", "🇨🇳 China", "🇹🇩 Ciad", "🇨🇴 Columbia", "🇰🇲 Comore", "🇨🇬 Congo", "🇰🇵 Coreea de Nord", "🇨🇷 Costa Rica", "🇩🇯 Djibouti", "🇸🇻 El Salvador", "🇪🇷 Eritreea", "🇸🇿 Eswatini", "🇬🇦 Gabon", "🇬🇲 Gambia", "🇬🇩 Grenada", "🇬🇳 Guineea", "🇬🇼 Guineea-Bissau", "🇬🇶 Guineea Ecuatorială", "🇮🇩 Indonezia", "🇸🇧 Insulele Solomon", "🇽🇰 Kosovo", "🇱🇾 Libia", "🇲🇷 Mauritania", "🇲🇺 Mauritius", "🇲🇽 Mexic", "🇲🇿 Mozambic", "🇳🇷 Nauru", "🇳🇵 Nepal", "🇳🇮 Nicaragua", "🇵🇼 Palau", "🇵🇦 Panama", "🇰🇳 Saint Kitts și Nevis", "🇱🇨 Saint Lucia", "🇻🇨 Saint Vincent și Grenadine", "🇼🇸 Samoa", "🇸🇹 Sao Tome și Principe", "🇸🇴 Somalia", "🇸🇩 Sudan", "🇸🇸 Sudanul de Sud", "🇸🇷 Surinam", "🇹🇿 Tanzania", "🇹🇱 Timorul de Est", "🇹🇻 Tuvalu", "🇻🇺 Vanuatu", "🇻🇪 Venezuela", "🇾🇪 Yemen", "🇿🇲 Zambia"];
+        const messages = {
+            list1: "AU DREPTUL de a conduce vehicule în România fără a deține permis de conducere internațional",
+            list2: "AU DREPTUL de a conduce vehicule în România dacă dețin permis de conducere internațional",
+            list3: "NU AU DREPTUL de a conduce vehicule în România chiar dacă dețin permis de conducere internațional"
+        };
+
+        const searchInput = document.getElementById('search');
+        const suggestionsContainer = document.getElementById('suggestions');
+        const popupContent = document.getElementById('popup-content');
+        const popup = document.getElementById('popup');
+        const overlay = document.getElementById('overlay');
+        const content = document.getElementById('content');
+        const showListsButton = document.getElementById('show-lists');
+        const filterButton = document.getElementById('filter-button');
+        const filterContainer = document.getElementById('filter-container');
+
+        const getSuggestions = (query) => {
+            const allCountries = [...list1, ...list2, ...list3];
+            return allCountries.filter(country => country.toLowerCase().includes(query.toLowerCase()));
+        };
+
+        const displaySuggestions = (suggestions) => {
+            suggestionsContainer.innerHTML = '';
+            suggestions.forEach(country => {
+                const div = document.createElement('div');
+                div.textContent = country;
+                div.classList.add('suggestion-item');
+                div.addEventListener('click', () => showPopup(country));
+                suggestionsContainer.appendChild(div);
+            });
+        };
+
+        const showPopup = (country) => {
+            let message = '';
+            let countryClass = '';
+
+            if (list1.includes(country)) {
+                message = `${country}: ${messages.list1}`;
+                countryClass = 'country-list1';
+            } else if (list2.includes(country)) {
+                message = `${country}: ${messages.list2}`;
+                countryClass = 'country-list2';
+            } else if (list3.includes(country)) {
+                message = `${country}: ${messages.list3}`;
+                countryClass = 'country-list3';
+            }
+
+            if (message) {
+                popupContent.innerHTML = `Posesorii permiselor de conducere eliberate de <span class="${countryClass}">${country}</span>: ${message.split(': ')[1]}`;
+                popup.style.display = 'block';
+                overlay.style.display = 'block';
+                content.classList.add('blur');
+            }
+        };
+
+        const showSelectedLists = () => {
+            let selectedCountries = [];
+            if (document.getElementById('filter1').checked) {
+                selectedCountries = selectedCountries.concat(list1);
+            }
+            if (document.getElementById('filter2').checked) {
+                selectedCountries = selectedCountries.concat(list2);
+            }
+            if (document.getElementById('filter3').checked) {
+                selectedCountries = selectedCountries.concat(list3);
+            }
+
+            if (selectedCountries.length) {
+                let columnsHTML = '<div class="columns">';
+                for (let i = 0; i < selectedCountries.length; i++) {
+                    let countryClass = '';
+                    if (list1.includes(selectedCountries[i])) {
+                        countryClass = 'country-list1';
+                    } else if (list2.includes(selectedCountries[i])) {
+                        countryClass = 'country-list2';
+                    } else if (list3.includes(selectedCountries[i])) {
+                        countryClass = 'country-list3';
+                    }
+                    columnsHTML += `<div class="column ${countryClass}">${selectedCountries[i]}</div>`;
+                }
+                columnsHTML += '</div>';
+
+                popupContent.innerHTML = columnsHTML;
+                popup.style.display = 'block';
+                overlay.style.display = 'block';
+                content.classList.add('blur');
+            }
+        };
+
+        searchInput.addEventListener('input', function () {
+            const query = searchInput.value;
+            if (query) {
+                const suggestions = getSuggestions(query);
+                displaySuggestions(suggestions);
+            } else {
+                suggestionsContainer.innerHTML = '';
+            }
+        });
+
+        overlay.addEventListener('click', function () {
+            popup.style.display = 'none';
+            overlay.style.display = 'none';
+            content.classList.remove('blur');
+        });
+
+        showListsButton.addEventListener('click', showSelectedLists);
+
+        filterButton.addEventListener('click', function () {
+            filterContainer.style.display = filterContainer.style.display === 'none' ? 'block' : 'none';
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            filterContainer.style.display = 'none';
+        });
+    </script>
+</body>
+
+</html>
